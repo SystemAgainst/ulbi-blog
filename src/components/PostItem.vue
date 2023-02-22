@@ -1,5 +1,6 @@
 <template>
   <div class="card">
+    <p>{{ post.id }}</p>
     <div><strong class="bold-font">Название</strong>: {{ post.title }}</div>
     <div><strong class="bold-font">Описание</strong>: {{ post.body }}</div>
     <hr>

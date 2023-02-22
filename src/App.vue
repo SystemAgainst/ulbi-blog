@@ -28,10 +28,25 @@
         @remove="removePost"
     />
   </div>
+  <div class="container">
+    <div class="card">
+      <div class="pagination">
+        <ul class="pagination-menu" v-for="pageNum in totalPages" :key="pageNum">
+          <li>
+            <a
+              href=""
+              :class="{ 'current-page': page === pageNum }"
+              @click.prevent="changePage(pageNum)"
+            >{{ pageNum }}</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script>
-import {computed, onMounted, ref, watch} from "vue";
+import {computed, onMounted, ref, watch, watchEffect} from "vue";
 import PostForm from "@/components/PostForm.vue";
 import PostList from "@/components/PostList.vue";
 import axios from "axios";
@@ -43,21 +58,26 @@ export default {
     const dialogVisible = ref(false);
     const loading = ref(false);
     const selectedSort = ref();
-    const searchQuery = ref();
+    const searchQuery = ref("");
+
+    const page = ref(1);
+    const limit = ref(10);
+    const totalPages = ref(0);
 
     const selectOptions = [
       { value: 'title', name: 'По названию' },
       { value: 'body', name: 'По содержанию' },
     ];
-    // const posts = ref([
-    //   { id: 1, title: 'hello 1', body: 'lorem1' },
-    //   { id: 2, title: 'hello 2', body: 'lorem2' },
-    // ]);
+
     const posts = ref([]);
 
     const createNewPost = (newPost) => {
       posts.value.push(newPost);
       dialogVisible.value = !dialogVisible.value;
+    };
+
+    const changePage = (pageNum) => {
+      page.value = pageNum;
     };
 
     const removePost = (id) => {
@@ -79,7 +99,14 @@ export default {
     const fetchPosts = async () => {
       try {
         toggleLoadingState();
-        const resp = await axios.get(`https://jsonplaceholder.typicode.com/posts?_limit=10`);
+        const resp = await axios.get(`https://jsonplaceholder.typicode.com/posts`, {
+          params: {
+            _page: page.value,
+            _limit: limit.value,
+          },
+        });
+        // 'x-total-count' getting from Networks (f12) and responses
+        totalPages.value = Math.ceil(resp.headers['x-total-count'] / limit.value);
         posts.value = resp.data;
       } catch (e) {
         alert('Ошибка при запросе');
@@ -105,8 +132,11 @@ export default {
     });
 
     const sortedAndSearchedPosts = computed(() => {
-      return sortedPosts.value.filter(post => post.title.includes(searchQuery.value));
-      // filter(post => post.title.includes(searchQuery.value));
+      return sortedPosts.value.filter(post => post.title.toLowerCase().includes(searchQuery.value.toLowerCase()));
+    });
+
+    watch(page, () => {
+      fetchPosts();
     });
 
     return {
@@ -122,7 +152,41 @@ export default {
       searchQuery,
       sortedPosts,
       sortedAndSearchedPosts,
+      totalPages,
+      page,
+      changePage,
     };
   },
 }
 </script>
+
+<style scoped>
+.pagination {
+  display: flex;
+  padding: 0 2rem;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fff;
+  box-sizing: border-box;
+  border-bottom: 1px solid #eaecef;
+}
+.pagination-menu {
+  list-style: none;
+  display: flex;
+}
+.pagination-menu li {
+  margin-right: 0.5rem;
+}
+.pagination-menu li a {
+  color: #2c3e50;
+  text-decoration: none;
+}
+/* current-page ~ pagination-menu li a:hover, .pagination-menu li a.active */
+.current-page {
+  padding: 8px 16px;
+  background-color: #eaecef;
+  color: #3eaf7c;
+  border-bottom: 2px solid #3eaf7c;
+  text-decoration: none;
+}
+</style>
